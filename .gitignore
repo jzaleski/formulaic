@@ -1,0 +1,14 @@
+.cache
+.eggs
+.env
+
+__pycache__
+
+build
+dist
+formulaic.egg-info
+
+*.pyc
+
+tags
+tags.*
