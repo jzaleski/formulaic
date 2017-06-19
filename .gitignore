@@ -12,3 +12,6 @@ formulaic.egg-info
 
 tags
 tags.*
+
+test.py
+tmp/test.db

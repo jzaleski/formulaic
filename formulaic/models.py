@@ -14,26 +14,21 @@ class Model(object):
         attribute_data (lazy-dict, stored as `_attribute_data`): the `Attribute`
             data `dict`
     """
-    def __init__(
-        self,
-        *args,
-        **kwargs
-    ):
+    def __init__(self, **attributes):
         """
-        Set attributes on the instance based on `kwargs` or `args[0]` if it is a
-        `dict` instance
+        Set attributes on the instance based on `attributes`
         """
-        # support both a positional argument of a `dict`, as well as keyword
-        # arguments
-        data = args[0] if args and isinstance(args[0], dict) else kwargs
+        # store the `Persistor` instance on the `Model`. If one is not provided,
+        # and `persist` is called, a `NotImplementedError` will be raised
+        self.__dict__['_persistor'] = attributes.pop('persistor', None)
 
         # ensure that only mapped-attributes are set
         for attribute_name, attribute in self.attribute_metadata.items():
-            if attribute_name in data:
+            if attribute_name in attributes:
                 setattr(
                     self,
                     attribute_name,
-                    data[attribute_name]
+                    attributes[attribute_name]
                 )
 
     @property
@@ -68,6 +63,16 @@ class Model(object):
             }
         return cls._attribute_metadata
 
+    @property
+    def persistor(self):
+        """
+        Get the `Persistor` instance
+
+        Returns:
+            Persistor: the `Persistor` instance (default: `None`)
+        """
+        return self._persistor
+
     def __setattr__(
         self,
         attribute_name,
@@ -97,6 +102,28 @@ class Model(object):
             raise ValueError('Invalid value: {} for attribute: {}'.format(
                 attribute_value, attribute_name))
         self.attribute_data[attribute_name] = formatted_attribute_value
+
+    def persist(self):
+        """
+        Persist the `Model`
+
+        Returns:
+            bool: the result
+
+        Raises:
+            RuntimeError: if the `Persistor` instance is `None`
+        """
+        persistor = self.persistor
+        if persistor is None:
+            raise RuntimeError
+        if not self.validate():
+            return False
+        key_attributes = persistor.persist(self.attribute_data)
+        if key_attributes is None:
+            return False
+        for attribute_name, attribute_value in key_attributes.items():
+            self.attribute_data[attribute_name] = attribute_value
+        return True
 
     def validate(self):
         """
