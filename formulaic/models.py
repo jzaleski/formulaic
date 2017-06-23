@@ -14,15 +14,34 @@ class Model(object):
         attribute_data (lazy-dict, stored as `_attribute_data`): the `Attribute`
             data `dict`
     """
-    def __init__(self, **attributes):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ):
         """
-        Set attributes on the instance based on `attributes`
+        Set attributes on the instance based on `args[0]` if it's a `dict` or
+        `kwargs`
+
+        Args:
+            *args (list): the positional arguments
+            **kwargs (dict): the keyword arguments
+
+        Raises:
+            ValueError: if any `attribute_value` could not be formatted or is
+                invalid
         """
         # store the `Persistor` instance on the `Model`. If one is not provided,
         # and `persist` is called, a `NotImplementedError` will be raised
-        self.__dict__['_persistor'] = attributes.pop('persistor', None)
+        self.persistor = kwargs.pop('persistor', None)
 
-        # ensure that only mapped-attributes are set
+        # support both a [single] positional argument of a `dict`, as well as
+        # keyword arguments
+        attributes = args[0] if args and isinstance(args[0], dict) else kwargs
+
+        # ensure that only mapped-attributes are set. The `default` value will
+        # be returned for any missing/omitted attribute when action is taken on
+        # the `Model` (e.g. `persist` or `validate` is called)
         for attribute_name, attribute in self.attribute_metadata.items():
             if attribute_name in attributes:
                 setattr(
@@ -63,16 +82,6 @@ class Model(object):
             }
         return cls._attribute_metadata
 
-    @property
-    def persistor(self):
-        """
-        Get the `Persistor` instance
-
-        Returns:
-            Persistor: the `Persistor` instance (default: `None`)
-        """
-        return self._persistor
-
     def __setattr__(
         self,
         attribute_name,
@@ -80,23 +89,24 @@ class Model(object):
     ):
         """
         Set an attribute on the instance. This is called during `__init__` for
-        each of the `kwargs`, as well as when a attribute value is set/updated
-        after instantiation. This method formats the input and stores the
-        resulting value
+        each of the attributes provided, as well as when a attribute value is
+        set/updated after instantiation. This method formats the input,
+        validates and stores the resulting value. If the specified
+        `attribute_name` does not refer to a mapped `attribute` the `super`
+        implementation will be called
 
         Args:
             attribute_name (str): the attribute-name
             attribute_value (mixed): the attribute-value
 
         Raises:
-            AttributeError: if the `Attribute` does not exist
             ValueError: if the `attribute_value` could not be formatted or is
                 invalid
         """
         attribute = self.attribute_metadata.get(attribute_name)
         if not attribute:
-            raise AttributeError('Attribute: `{}` does not exist'.format(
-                attribute_name))
+            super(Model, self).__setattr__(attribute_name, attribute_value)
+            return
         formatted_attribute_value = attribute.format(attribute_value)
         if not attribute.validate(formatted_attribute_value):
             raise ValueError('Invalid value: {} for attribute: {}'.format(
