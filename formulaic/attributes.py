@@ -1,4 +1,6 @@
+from .formatters import Formatter
 from .types import Type
+from .validators import Validator
 
 
 class Attribute(object):
@@ -69,3 +71,122 @@ class Attribute(object):
         if self.type == Type.LIST and isinstance(value, Type.LIST):
             return all(map(self.validator, value))
         return self.validator(value)
+
+
+class BooleanAttribute(Attribute):
+    """
+    Class representing a "[Boolean]Attribute" of a "Model." This class extends
+    the `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(BooleanAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.boolean,
+                type=Type.BOOLEAN,
+                validator=Validator.boolean,
+            )
+        )
+
+
+class FloatAttribute(Attribute):
+    """
+    Class representing a "[Float]Attribute" of a "Model." This class extends the
+    `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(FloatAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.float,
+                type=Type.FLOAT,
+                validator=Validator.float,
+            )
+        )
+
+
+class IntegerAttribute(Attribute):
+    """
+    Class representing a "[Integer]Attribute" of a "Model." This class extends
+    the `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(IntegerAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.integer,
+                type=Type.INTEGER,
+                validator=Validator.integer,
+            )
+        )
+
+
+class LongAttribute(Attribute):
+    """
+    Class representing a "[Long]Attribute" of a "Model." This class extends the
+    `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(LongAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.long,
+                type=Type.LONG,
+                validator=Validator.long,
+            )
+        )
+
+
+class StringAttribute(Attribute):
+    """
+    Class representing a "[String]Attribute" of a "Model." This class extends
+    the `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(StringAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.string,
+                type=Type.STRING,
+                validator=Validator.string,
+            )
+        )
+
+
+class TextAttribute(Attribute):
+    """
+    Class representing a "[Text]Attribute" of a "Model." This class extends the
+    `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(TextAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.text,
+                type=Type.TEXT,
+                validator=Validator.text,
+            )
+        )
+
+
+class UUIDAttribute(Attribute):
+    """
+    Class representing a "[UUID]Attribute" of a "Model." This class extends the
+    `Attribute` class and applies the default configuration for `formatter`,
+    `type` and `validator`
+    """
+    def __init__(self, **kwargs):
+        super(UUIDAttribute, self).__init__(
+            **dict(
+                kwargs,
+                formatter=Formatter.uuid,
+                type=Type.UUID,
+                validator=Validator.uuid,
+            )
+        )
