@@ -1,4 +1,5 @@
 from .attributes import Attribute
+from .triggers import Trigger
 from .types import Type
 
 
@@ -9,10 +10,14 @@ class Model(object):
     Class Attributes:
         attribute_metadata (lazy-dict, stored as `_attribute_metadata`): the
             `Attribute` meta-data `dict`
+        trigger_metadata (lazy-dict, stored as `_trigger_metadata`): the
+            `Trigger` meta-data `dict`
 
     Instance Attributes:
         attribute_data (lazy-dict, stored as `_attribute_data`): the `Attribute`
             data `dict`
+        changed_attributes (lazy-set, stored as `_changed_attributes`): the
+            names of the changed attributes
     """
     def __init__(
         self,
@@ -56,7 +61,7 @@ class Model(object):
         Lazy load and return the `Attribute` data `dict`
 
         Returns:
-            dict: the `Attribute` data `dict` (keyed by `name`)
+            dict: the `Attribute` data `dict` (keyed by `attribute_name`)
         """
         if not hasattr(self, '_attribute_data'):
             self.__dict__['_attribute_data'] = {
@@ -71,7 +76,7 @@ class Model(object):
         Lazy load and return the `Attribute` meta-data `dict`
 
         Returns:
-            dict: the `Attribute` meta-data (keyed by `name`)
+            dict: the `Attribute` meta-data (keyed by `attribute_name`)
         """
         cls = type(self)
         if not hasattr(cls, '_attribute_metadata'):
@@ -82,18 +87,47 @@ class Model(object):
             }
         return cls._attribute_metadata
 
+    @property
+    def changed_attributes(self):
+        """
+        Lazy load and return the attribute-names of the changed `Attribute(s)`
+
+        Returns:
+            set: the attribute-names of the changed `Attributes`
+        """
+        if not hasattr(self, '_changed_attributes'):
+            self._changed_attributes = set()
+        return self._changed_attributes
+
+    @property
+    def trigger_metadata(self):
+        """
+        Lazy load and return the `Trigger` meta-data `dict`
+
+        Returns:
+            dict: the `Trigger` meta-data `dict` (keyed by `attribute_names`)
+        """
+        cls = type(self)
+        if not hasattr(cls, '_trigger_metadata'):
+            cls._trigger_metadata = {
+                trigger.attribute_names: trigger
+                for trigger in cls.__dict__.values()
+                if isinstance(trigger, Trigger)
+            }
+        return cls._trigger_metadata
+
     def __setattr__(
         self,
         attribute_name,
         attribute_value
     ):
         """
-        Set an attribute on the instance. This is called during `__init__` for
-        each of the attributes provided, as well as when a attribute value is
-        set/updated after instantiation. This method formats the input,
-        validates and stores the resulting value. If the specified
-        `attribute_name` does not refer to a mapped `attribute` the `super`
-        implementation will be called
+        Set an attribute value on the instance. This is called during `__init__`
+        for each of the attributes provided, as well as whenever an attribute
+        value is set/updated after instantiation. This method formats the input,
+        validates, stores the formatted value and fires any applicable
+        `Trigger(s)`. If the specified `attribute_name` does not refer to a
+        mapped `attribute` the `super` implementation will be called
 
         Args:
             attribute_name (str): the attribute-name
@@ -107,11 +141,23 @@ class Model(object):
         if not attribute:
             super(Model, self).__setattr__(attribute_name, attribute_value)
             return
-        formatted_attribute_value = attribute.format(attribute_value)
-        if not attribute.validate(formatted_attribute_value):
+        new_attribute_value = attribute.format(attribute_value)
+        if not attribute.validate(new_attribute_value):
             raise ValueError('Invalid value: {} for attribute: {}'.format(
                 attribute_value, attribute_name))
-        self.attribute_data[attribute_name] = formatted_attribute_value
+        old_attribute_value = self.attribute_data.get(attribute_name)
+        if old_attribute_value == new_attribute_value:
+            return
+        self.attribute_data[attribute_name] = new_attribute_value
+        self.changed_attributes.add(attribute_name)
+        for attribute_names, trigger in self.trigger_metadata.items():
+            if attribute_name in attribute_names and \
+                self.changed_attributes >= attribute_names:
+                trigger.trigger(
+                    old_attribute_value,
+                    new_attribute_value,
+                    self
+                )
 
     def persist(self):
         """

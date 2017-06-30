@@ -43,8 +43,8 @@ class SQLPersistor(Persistor):
         key_attribute_name=None,
     ):
         self.table_name = table_name
-        self.key_attribute_names = set([key_attribute_name]) if \
-            key_attribute_name else set()
+        self.key_attribute_names = frozenset([key_attribute_name]) if \
+            key_attribute_name else frozenset()
 
     @property
     def connection(self):

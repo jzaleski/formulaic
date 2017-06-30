@@ -1,28 +1,25 @@
-#!/usr/bin/env python
+import ast, re
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 MODULE_NAME = 'formulaic'
 
-module_init_file = '{}/__init__.py'.format(MODULE_NAME)
-with open(module_init_file) as f:
-    exec(
-        compile(
-            f.read(),
-            module_init_file,
-            'exec'
-        )
-    )
+
+_version_re = re.compile(r'__version__\s+=\s+(.*)')
+with open('{}/__init__.py'.format(MODULE_NAME), 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
+
 
 setup(
     name=MODULE_NAME,
-    version=__version__,
+    version=version,
     description='Simple [declarative] forms',
     author='Jonathan W. Zaleski',
     author_email='JonathanZaleski@gmail.com',
     url='https://github.com/jzaleski/formulaic',
-    packages=[MODULE_NAME],
+    packages=find_packages(exclude=('tests', 'tests.*')),
     install_requires=['setuptools', 'six>=1.10.0'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
