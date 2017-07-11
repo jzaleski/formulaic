@@ -7,17 +7,23 @@ class Model(object):
     """
     Class representing a "Model"
 
-    Class Attributes:
+    Class Attributes/Properties:
         attribute_metadata (lazy-dict, stored as `_attribute_metadata`): the
             `Attribute` meta-data `dict`
         trigger_metadata (lazy-dict, stored as `_trigger_metadata`): the
             `Trigger` meta-data `dict`
 
-    Instance Attributes:
+    Instance Attributes/Properties:
         attribute_data (lazy-dict, stored as `_attribute_data`): the `Attribute`
             data `dict`
-        changed_attributes (lazy-set, stored as `_changed_attributes`): the
-            names of the changed attributes
+        changed_attribute_data (lazy-dict, stored as `_changed_attribute_data`):
+            the changed `Attribute` data `dict`
+        initialized (bool): the initialization status
+        merged_attribute_data (derived-dict): the result of merging the
+            `attribute_data` (`dict`) and `changed_attribute_data` (`dict`)
+        persistor (Persistor): the `Persistor` instance
+        processed_attributes (lazy-set, stored as `_processed_attributes`): the
+            attribute-names of the processed `Attribute(s)`
     """
     def __init__(
         self,
@@ -36,6 +42,10 @@ class Model(object):
             ValueError: if any `attribute_value` could not be formatted or is
                 invalid
         """
+        # Set the `initialized` status to `False` as we are currently _still_
+        # initializing (this will toggled to `True` at the end of this method)
+        self.initialized = False
+
         # store the `Persistor` instance on the `Model`. If one is not provided,
         # and `persist` is called, a `NotImplementedError` will be raised
         self.persistor = kwargs.pop('persistor', None)
@@ -55,13 +65,16 @@ class Model(object):
                     attributes[attribute_name]
                 )
 
+        # Set the `initialized` to `True`, we are done
+        self.initialized = True
+
     @property
     def attribute_data(self):
         """
         Lazy load and return the `Attribute` data `dict`
 
         Returns:
-            dict: the `Attribute` data `dict` (keyed by `attribute_name`)
+            dict: the `Attribute` data `dict` (key: `attribute_name`)
         """
         if not hasattr(self, '_attribute_data'):
             self.__dict__['_attribute_data'] = {
@@ -70,13 +83,23 @@ class Model(object):
             }
         return self._attribute_data
 
+    @attribute_data.setter
+    def attribute_data(self, value):
+        """
+        Set the `Attribute` data `dict`
+
+        Args:
+            value (dict): the _new_ `Attribute` data `dict`
+        """
+        self._attribute_data = value
+
     @property
     def attribute_metadata(self):
         """
         Lazy load and return the `Attribute` meta-data `dict`
 
         Returns:
-            dict: the `Attribute` meta-data (keyed by `attribute_name`)
+            dict: the `Attribute` meta-data (key: `attribute_name`)
         """
         cls = type(self)
         if not hasattr(cls, '_attribute_metadata'):
@@ -88,16 +111,78 @@ class Model(object):
         return cls._attribute_metadata
 
     @property
-    def changed_attributes(self):
+    def changed_attribute_data(self):
         """
-        Lazy load and return the attribute-names of the changed `Attribute(s)`
+        Lazy load and return the changed `Attribute` data `dict`
 
         Returns:
-            set: the attribute-names of the changed `Attributes`
+            dict: the changed `Attribute` data `dict` (key: `attribute_name`)
         """
-        if not hasattr(self, '_changed_attributes'):
-            self._changed_attributes = set()
-        return self._changed_attributes
+        if not hasattr(self, '_changed_attribute_data'):
+            self._changed_attribute_data = dict()
+        return self._changed_attribute_data
+
+    @property
+    def initialized(self):
+        """
+        Get the initialization status
+
+        Returns:
+            bool: the initialization status
+        """
+        return self._initialized
+
+    @initialized.setter
+    def initialized(self, value):
+        """
+        Set the initialization status
+
+        Args:
+            value (dict): the _new_ initialization status
+        """
+        self._initialized = value
+
+    @property
+    def merged_attribute_data(self):
+        """
+        Get the merged `Attribute` data `dict` (this *is not* memoized)
+
+        Returns:
+            dict: the merged `Attribute` data `dict` (key: `attribute_name`)
+        """
+        return dict(self.attribute_data, **self.changed_attribute_data)
+
+    @property
+    def persistor(self):
+        """
+        Get the `Persistor`
+
+        Return:
+            Persistor: the `Persistor` instance
+        """
+        return self._persistor
+
+    @persistor.setter
+    def persistor(self, value):
+        """
+        Set the `Persistor`
+
+        Args:
+            value (Persistor): the _new_ `Persistor` [instance]
+        """
+        self._persistor = value
+
+    @property
+    def processed_attributes(self):
+        """
+        Lazy load and return the processed attribute-names
+
+        Returns:
+            set: the processed attribute-names
+        """
+        if not hasattr(self, '_processed_attributes'):
+            self._processed_attributes = set()
+        return self._processed_attributes
 
     @property
     def trigger_metadata(self):
@@ -105,7 +190,7 @@ class Model(object):
         Lazy load and return the `Trigger` meta-data `dict`
 
         Returns:
-            dict: the `Trigger` meta-data `dict` (keyed by `attribute_names`)
+            dict: the `Trigger` meta-data `dict` (key: `attribute_names`)
         """
         cls = type(self)
         if not hasattr(cls, '_trigger_metadata'):
@@ -145,14 +230,21 @@ class Model(object):
         if not attribute.validate(new_attribute_value):
             raise ValueError('Invalid value: {} for attribute: {}'.format(
                 attribute_value, attribute_name))
-        old_attribute_value = self.attribute_data.get(attribute_name)
-        if old_attribute_value == new_attribute_value:
+        old_attribute_value = self.changed_attribute_data.get(attribute_name,
+            self.attribute_data.get(attribute_name))
+        if not self.initialized:
+            self.attribute_data[attribute_name] = new_attribute_value
+        elif attribute_name not in self.attribute_data or \
+            new_attribute_value != old_attribute_value:
+            self.changed_attribute_data[attribute_name] = new_attribute_value
+        else:
+            self.changed_attribute_data.pop(attribute_name, None)
+            self.processed_attributes.discard(attribute_name)
             return
-        self.attribute_data[attribute_name] = new_attribute_value
-        self.changed_attributes.add(attribute_name)
+        self.processed_attributes.add(attribute_name)
         for attribute_names, trigger in self.trigger_metadata.items():
             if attribute_name in attribute_names and \
-                self.changed_attributes >= attribute_names:
+                self.processed_attributes >= attribute_names:
                 trigger.trigger(
                     old_attribute_value,
                     new_attribute_value,
@@ -167,18 +259,19 @@ class Model(object):
             bool: the result
 
         Raises:
-            RuntimeError: if the `Persistor` instance is `None`
+            RuntimeError: if the `Persistor` [instance] is `None`
         """
         persistor = self.persistor
         if persistor is None:
             raise RuntimeError
         if not self.validate():
             return False
-        key_attributes = persistor.persist(self.attribute_data)
-        if key_attributes is None:
+        merged_attribute_data = self.merged_attribute_data
+        key_attribute_data = persistor.persist(merged_attribute_data)
+        if key_attribute_data is None:
             return False
-        for attribute_name, attribute_value in key_attributes.items():
-            self.attribute_data[attribute_name] = attribute_value
+        self.attribute_data = dict(merged_attribute_data, **key_attribute_data)
+        self.changed_attribute_data.clear()
         return True
 
     def validate(self):
@@ -188,7 +281,8 @@ class Model(object):
         Returns:
             bool: the result
         """
+        merged_attribute_data = self.merged_attribute_data
         return all(
-            attribute.validate(self.attribute_data[attribute_name])
+            attribute.validate(merged_attribute_data[attribute_name])
             for attribute_name, attribute in self.attribute_metadata.items()
         )
