@@ -1,3 +1,6 @@
+__all__ = ('Trigger',)
+
+
 class Trigger(object):
     """
     Class representing hooks/handlers to be "triggered" based on one or more

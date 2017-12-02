@@ -1,3 +1,6 @@
+__all__ = ('Model',)
+
+
 from .attributes import Attribute
 from .triggers import Trigger
 from .types import Type

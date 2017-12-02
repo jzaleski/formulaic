@@ -1,3 +1,10 @@
+__all__ = (
+    'Persistor',
+    'SQLPersistor',
+    'SQLitePersistor',
+)
+
+
 try:
     import sqlite3
 except:
