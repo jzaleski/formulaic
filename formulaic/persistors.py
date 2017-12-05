@@ -7,7 +7,7 @@ __all__ = (
 
 try:
     import sqlite3
-except:
+except Exception:
     sqlite3 = None
 
 

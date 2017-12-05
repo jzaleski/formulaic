@@ -1,3 +1,5 @@
 # formulaic
 
-TODO: Implement me!
+Simple [declarative] forms
+
+_Work in Progress_

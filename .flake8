@@ -1,0 +1,4 @@
+[flake8]
+exclude = formulaic/__init__.py
+ignore = E125, E128, E131
+max-line-length = 100

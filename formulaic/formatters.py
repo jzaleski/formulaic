@@ -4,6 +4,10 @@ __all__ = ('Formatter',)
 import six
 
 
+if six.PY3:
+    long = int
+
+
 class Formatter(object):
     """
     Class providing methods for formatting input (formatting occurs when an
@@ -36,7 +40,7 @@ class Formatter(object):
         """
         try:
             return float(value)
-        except:
+        except Exception:
             raise ValueError('Could not convert: {} to a float value'.format(
                 value))
 
@@ -56,7 +60,7 @@ class Formatter(object):
         """
         try:
             return value.lower()
-        except:
+        except Exception:
             raise ValueError('Could not lowercase value: {}'.format(value))
 
     @classmethod
@@ -74,7 +78,7 @@ class Formatter(object):
         """
         try:
             return int(value)
-        except:
+        except Exception:
             raise ValueError('Could not convert: {} to an integer value'.format(
                 value))
 
@@ -92,8 +96,8 @@ class Formatter(object):
             ValueError: if `value` could not be casted
         """
         try:
-            return (int if six.PY3 else long)(value)
-        except:
+            return long(value)
+        except Exception:
             raise ValueError('Could not convert: {} to an long value'.format(
                 value))
 
@@ -119,7 +123,7 @@ class Formatter(object):
         Returns:
             str/unicode: the casted result
         """
-        return (str if six.PY3 else unicode)(value)
+        return six.text_type(value)
 
     @classmethod
     def upper(cls, value):
@@ -137,5 +141,5 @@ class Formatter(object):
         """
         try:
             return value.upper()
-        except:
+        except Exception:
             raise ValueError('Could not uppercase value: {}'.format(value))

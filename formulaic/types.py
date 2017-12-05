@@ -4,6 +4,10 @@ __all__ = ('Type',)
 import six
 
 
+if six.PY3:
+    long = int
+
+
 class Type(object):
     """
     Class providing type-mapping constants
@@ -23,7 +27,7 @@ class Type(object):
     FLOAT = float
     INTEGER = six.integer_types
     LIST = list
-    LONG = int if six.PY3 else long
+    LONG = long
     STRING = six.string_types
     TEXT = six.text_type
     UUID = six.string_types
